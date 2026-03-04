@@ -1,0 +1,64 @@
+import React, { useState } from "react"; import { Card, CardContent } from "@/components/ui/card"; import { Button } from "@/components/ui/button"; import { Input } from "@/components/ui/input"; import { Textarea } from "@/components/ui/textarea"; import { motion } from "framer-motion"; import jsPDF from "jspdf";
+
+/* ---------------- MUSIC THEORY ---------------- */ const NOTES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
+
+const getScale = (key) => { const index = NOTES.indexOf(key); if (index === -1) return NOTES; return Array.from({length:7},(_,i)=>NOTES[(index + [0,2,4,5,7,9,11][i])%12]); };
+
+const toNashville = (chord, key) => { const scale = getScale(key); const root = chord.match(/^([A-G]#?)/)?.[1]; const degree = scale.indexOf(root); return degree !== -1 ? (degree+1).toString() : chord; };
+
+/* ---------------- APP ---------------- */ export default function WorshipChartBuilder() { const [title,setTitle]=useState("Sunday Worship"); const [tempo,setTempo]=useState(72); const [key,setKey]=useState("G"); const [capo,setCapo]=useState(0); const [lyrics,setLyrics]=useState("Your grace is enough for me"); const [chords,setChords]=useState(["G","C","D","Em"]); const [nashville,setNashville]=useState(false); const [setlist,setSetlist]=useState([]); const [songName,setSongName]=useState("");
+
+/* ----------- CLICK TRACK / METRONOME ----------- / const playClick=()=>{ const ctx=new(window.AudioContext||window.webkitAudioContext)(); const interval=60/tempo; for(let i=0;i<16;i++){ const osc=ctx.createOscillator(); const gain=ctx.createGain(); osc.frequency.value=i%4===0?1000:800; gain.gain.setValueAtTime(0.5,ctx.currentTime+iinterval); gain.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+iinterval+0.1); osc.connect(gain); gain.connect(ctx.destination); osc.start(ctx.currentTime+iinterval); osc.stop(ctx.currentTime+i*interval+0.1); } };
+
+/* ----------- SETLIST BUILDER ----------- */ const addToSetlist=()=>{ if(songName) setSetlist([...setlist,songName]); setSongName(""); };
+
+/* ----------- PDF MULTI PAGE ----------- */ const exportPDF=()=>{ const doc=new jsPDF(); doc.setFont("courier","normal"); let y=15; doc.setFontSize(18); doc.text(title,10,y); y+=10; doc.setFontSize(12); doc.text(Key: ${key},10,y); y+=7; doc.text(Tempo: ${tempo} BPM,10,y); y+=7; doc.text(Capo: ${capo},10,y); y+=10;
+
+doc.text("Chords:",10,y); y+=7; chords.forEach(ch=>{ const display=nashville?toNashville(ch,key):ch; doc.text(display,10,y); y+=7; if(y>270){doc.addPage(); y=15;} });
+
+y+=10; doc.text("Lyrics:",10,y); y+=7; const lines=doc.splitTextToSize(lyrics,180); lines.forEach(line=>{ doc.text(line,10,y); y+=7; if(y>270){doc.addPage(); y=15;} });
+
+doc.addPage(); y=15; doc.setFontSize(16); doc.text("Setlist",10,y); y+=10; setlist.forEach(song=>{ doc.text(song,10,y); y+=7; });
+
+doc.save(${title.replace(/\s+/g,"_")}_FullBandChart.pdf); };
+
+/* ----------- UI ----------- */ return(
+
+<div className="min-h-screen bg-gray-100 p-6 grid place-items-center">
+<motion.div initial={{opacity:0,y:20}} animate={{opacity:1,y:0}} className="w-full max-w-6xl">
+<Card className="rounded-2xl shadow-xl">
+<CardContent className="p-8 space-y-8"><h1 className="text-3xl font-bold">Full Band Worship Planner</h1><div className="grid grid-cols-4 gap-4">
+<Input value={title} onChange={e=>setTitle(e.target.value)} />
+<Input value={key} onChange={e=>setKey(e.target.value)} />
+<Input type="number" value={tempo} onChange={e=>setTempo(e.target.value)} />
+<Input type="number" value={capo} onChange={e=>setCapo(e.target.value)} />
+</div><div className="flex gap-4">
+<Button onClick={()=>setNashville(!nashville)}>Toggle Nashville</Button>
+<Button onClick={playClick}>Start Click Track</Button>
+</div><div>
+<h2 className="text-xl font-semibold">Band Charts</h2>
+<div className="grid grid-cols-3 gap-4">
+<div className="bg-white p-4 rounded-xl shadow">🎸 Guitar Chart<br/>Capo Applied</div>
+<div className="bg-white p-4 rounded-xl shadow">🎹 Piano Chart<br/>Key Based</div>
+<div className="bg-white p-4 rounded-xl shadow">🎸 Bass Chart<br/>Root Notes</div>
+</div>
+</div><div>
+<h2 className="text-xl font-semibold">Lyrics</h2>
+<Textarea value={lyrics} onChange={e=>setLyrics(e.target.value)} />
+</div><div>
+<h2 className="text-xl font-semibold">Setlist Builder</h2>
+<div className="flex gap-3">
+<Input value={songName} onChange={e=>setSongName(e.target.value)} placeholder="Add Song" />
+<Button onClick={addToSetlist}>Add</Button>
+</div>
+<ul className="mt-3 list-disc ml-6">
+{setlist.map((song,i)=>(<li key={i}>{song}</li>))}
+</ul>
+</div><div className="flex gap-4">
+<Button onClick={exportPDF}>Download Multi-Page Band PDF</Button>
+</div></CardContent>
+</Card>
+</motion.div>
+</div>
+);
+}
